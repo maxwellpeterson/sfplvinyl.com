@@ -1,11 +1,20 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "spotivinyl"
+name = "sfplvinyl"
 compatibility_date = "2024-11-27"
 main = "./server.ts"
 assets = { directory = "./build/client" }
 
-# Workers Logs
-# Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
-# Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
 [observability]
 enabled = true
+
+[vars]
+OAUTH_REDIRECT_URI = "https://sfplvinyl.archmap.workers.dev/oauth/callback"
+OAUTH_CLIENT_ID = "f413f5ac653046e7b41f7b8bd2920c5f"
+
+[[kv_namespaces]]
+binding = "SESSION"
+id = "0752632c63d948a89b94da6fdf13cc29"
+
+[[kv_namespaces]]
+binding = "SPOTIFY_TO_SFPL"
+id = "2514e9492d5443df9f5ae4009f5cba72"

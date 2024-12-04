@@ -1,5 +1,5 @@
 {
-  "name": "spotivinyl",
+  "name": "sfplvinyl",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -11,7 +11,7 @@
     "start": "wrangler dev",
     "typecheck": "tsc",
     "typegen": "wrangler types",
-    "preview": "npm run build && wrangler dev",
+    "preview": "npm run build && wrangler dev --port=5173",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
@@ -20,7 +20,9 @@
     "@remix-run/server-runtime": "^2.14.0",
     "isbot": "^4.1.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-loading-skeleton": "^3.5.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
