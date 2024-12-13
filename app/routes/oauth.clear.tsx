@@ -10,7 +10,7 @@ export const action = async ({
   const session = await getSession(
     request.headers.get("Cookie")
   );
-  return redirect("/oauth", {
+  return redirect("/", {
     headers: {
       "Set-Cookie": await destroySession(session),
     },
