@@ -35,12 +35,14 @@ export default function OAuth() {
           Find your top Spotify tracks on vinyl at the San Francisco Public
           Library.
         </span>
-        <a href={oauthUrl} className="p-4 bg-green-300 font-medium text-center">
+        <a href={oauthUrl} className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center">
           Connect to Spotify
         </a>
         <a
           href="https://github.com/maxwellpeterson/sfplvinyl.com"
-          className="text-center text-gray-600 underline underline-offset-2"
+          rel="noreferrer"
+          target="_blank"
+          className="text-center text-gray-600 dark:text-gray-400 underline underline-offset-2"
         >
           View Source
         </a>
