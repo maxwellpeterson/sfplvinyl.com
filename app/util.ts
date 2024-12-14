@@ -1,3 +1,5 @@
+import { type MetaFunction } from "@remix-run/cloudflare";
+
 export const OAUTH_SCOPE = "user-top-read";
 
 export async function onError(url: string | URL, response: Response) {
@@ -24,3 +26,19 @@ export type Album = {
   kind: "album" | "single" | "compilation";
   sfplId?: string;
 };
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "SFPL Vinyl Search" },
+    {
+      name: "description",
+      content:
+        "Find your top Spotify tracks on vinyl at the San Francisco Public Library.",
+    },
+  ];
+};
+
+export function searchParams(request: Request) {
+  const url = new URL(request.url);
+  return Object.fromEntries(url.searchParams.entries());
+}

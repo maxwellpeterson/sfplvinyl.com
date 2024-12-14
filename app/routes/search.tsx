@@ -1,25 +1,23 @@
-import {
-  data,
-  redirect,
-  type LoaderFunctionArgs,
-  type MetaFunction,
-} from "@remix-run/cloudflare";
+import { data, redirect, type LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { setupSessionStorage } from "~/session";
-import { Await, Form, useLoaderData } from "@remix-run/react";
+import {
+  Await,
+  Form,
+  useLoaderData,
+  useNavigation,
+  useSearchParams,
+  useSubmit,
+} from "@remix-run/react";
 import { z } from "zod";
 import { Suspense } from "react";
-import { Album } from "~/util";
+import { Album, meta, searchParams } from "~/util";
 import { SpotifyClient } from "~/spotify";
-
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
-};
+const defaultTimeRange = "short_term";
+
+export { meta };
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const { getSession, commitSession } = setupSessionStorage(
@@ -31,9 +29,17 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
     // User needs to sign in with Spotify.
     return redirect("/");
   }
+
+  const parsed = SearchParamsSchema.safeParse(searchParams(request));
+  if (!parsed.success) {
+    // Clear malformed search params.
+    return redirect("/search");
+  }
+
   const spotify = new SpotifyClient(context.cloudflare.env, user.credentials);
   const response = await spotify.get(
-    "/me/top/tracks?limit=50&time_range=short_term"
+    `/me/top/tracks?` +
+      new URLSearchParams({ limit: "50", time_range: parsed.data.time_range })
   );
 
   // Update session credentials in case Spotify API calls triggered a credential
@@ -54,6 +60,12 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
     }
   );
 };
+
+const SearchParamsSchema = z.object({
+  time_range: z
+    .enum(["short_term", "medium_term", "long_term"])
+    .default(defaultTimeRange),
+});
 
 const TopTracksResponseSchema = z.object({
   items: z.array(
@@ -92,25 +104,27 @@ async function getTopAlbums(
 ): Promise<Album[]> {
   // TODO: remove!
   await new Promise((resolve) => setTimeout(resolve, 5000));
-  const albums = items.filter((track) => track.album.album_type === "album").reduce((acc, track) => {
-    const existing = acc.find((album) => album.uri === track.album.uri);
-    if (existing !== undefined) {
-      if (existing.topTracks.length < MAX_TOP_TRACKS) {
-        existing.topTracks.push(track);
+  const albums = items
+    .filter((track) => track.album.album_type === "album")
+    .reduce((acc, track) => {
+      const existing = acc.find((album) => album.uri === track.album.uri);
+      if (existing !== undefined) {
+        if (existing.topTracks.length < MAX_TOP_TRACKS) {
+          existing.topTracks.push(track);
+        }
+      } else {
+        acc.push({
+          uri: track.album.uri,
+          name: track.album.name,
+          artists: track.album.artists,
+          topTracks: [track],
+          imageUrl: track.album.images.find((image) => image.width === 64)!.url,
+          year: track.album.release_date.split("-")[0],
+          kind: track.album.album_type,
+        });
       }
-    } else {
-      acc.push({
-        uri: track.album.uri,
-        name: track.album.name,
-        artists: track.album.artists,
-        topTracks: [track],
-        imageUrl: track.album.images.find((image) => image.width === 64)!.url,
-        year: track.album.release_date.split("-")[0],
-        kind: track.album.album_type,
-      });
-    }
-    return acc;
-  }, [] as Album[]);
+      return acc;
+    }, [] as Album[]);
 
   // for (const album of albums) {
   //   const sfplId = await getSfplId(env, album);
@@ -123,13 +137,49 @@ async function getTopAlbums(
 
 export default function Index() {
   const { user, albums } = useLoaderData<typeof loader>();
+  const [searchParams] = useSearchParams();
+  const navigation = useNavigation();
+  const submit = useSubmit();
+  const currentTimeRange = searchParams.get("time_range") || defaultTimeRange;
+  // console.log(navigation.state + ":" + navigation.location?.search + ":" + currentTimeRange);
+  const suspenseKey =
+    navigation.location?.search ?? "?" + searchParams.toString();
+  const navigationPromise =
+    navigation.state === "loading" ? new Promise(() => {}) : Promise.resolve();
+  console.log(`suspense key: ${suspenseKey}`);
 
   return (
     <div>
-      <div className="flex">Welcome {user.name}!</div>
-      <Form method="post" action="/oauth/clear">
-        <button>Log Out</button>
-      </Form>
+      <div className="flex justify-between p-4">
+        <div>
+          <div className="text-2xl font-bold">Hi {user.name}!</div>
+          <span>Here are your top tracks from the past </span>
+          <Form
+            method="get"
+            onChange={(event) => {
+              event.preventDefault();
+              submit(event.currentTarget);
+            }}
+          >
+            <select name="time_range" defaultValue={currentTimeRange}>
+              <option id="short_term" value="short_term">
+                month
+              </option>
+              <option id="medium_term" value="medium_term">
+                6 months
+              </option>
+              <option id="long_term" value="long_term">
+                year
+              </option>
+            </select>
+          </Form>
+        </div>
+        <Form method="post" action="/oauth/clear">
+          <button className="p-2 bg-green-300 dark:bg-green-600 font-medium text-center">
+            Log Out
+          </button>
+        </Form>
+      </div>
       <div>
         <table className="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -147,6 +197,7 @@ export default function Index() {
           </thead>
           <tbody>
             <Suspense
+              key={suspenseKey}
               fallback={
                 <>
                   {[1, 2, 3].map((i) => (
@@ -155,8 +206,8 @@ export default function Index() {
                 </>
               }
             >
-              <Await resolve={albums}>
-                {(albums) => (
+              <Await resolve={Promise.all([albums, navigationPromise])}>
+                {([albums]) => (
                   <>
                     {albums.map((album) => (
                       <AlbumRow
@@ -205,13 +256,13 @@ function AlbumRow({ cover, name, artists, year, tracks }: AlbumRowProps) {
         </div>
       </td>
       <td className="align-top px-6 py-4">
-          <ol>
-            {tracks.slice(0, 3).map((track, i) => (
-              <li key={i} className="w-full">
-                {track}
-              </li>
-            ))}
-          </ol>
+        <ol>
+          {tracks.slice(0, 3).map((track, i) => (
+            <li key={i} className="w-full">
+              {track}
+            </li>
+          ))}
+        </ol>
       </td>
       <td className="px-6 py-4">
         {/* {album.sfplId === undefined ? ( */}

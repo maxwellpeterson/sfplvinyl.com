@@ -1,7 +1,9 @@
 import { LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
 import { setupSessionStorage } from "~/session";
-import { OAUTH_SCOPE } from "~/util";
+import { OAUTH_SCOPE, meta } from "~/util";
+
+export {meta}
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const { getSession } = setupSessionStorage(context.cloudflare.env);
@@ -29,12 +31,12 @@ export default function OAuth() {
   const { oauthUrl } = useLoaderData<typeof loader>();
   return (
     <div className="flex flex-col h-screen items-center justify-center">
-      <div className="w-min flex flex-col align-center gap-2">
-        <h1 className="text-4xl font-bold text-nowrap">SFPL Vinyl Search</h1>
-        <span className="text-center">
+      <div className="w-min grid align-center gap-2">
+        <div className="text-4xl font-bold text-nowrap">SFPL Vinyl Search</div>
+        <div className="text-center">
           Find your top Spotify tracks on vinyl at the San Francisco Public
           Library.
-        </span>
+        </div>
         <a href={oauthUrl} className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center">
           Connect to Spotify
         </a>
