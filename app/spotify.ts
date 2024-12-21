@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Credentials, setupSessionStorage } from "~/session";
-import { onError } from "~/util";
+import { check } from "~/util";
 
 export class SpotifyClient {
   readonly #env: Env;
@@ -11,20 +11,21 @@ export class SpotifyClient {
     this.#credentials = credentials;
   }
 
-  async get(endpoint: string, refreshUserCredentials = true): Promise<unknown> {
+  async get(
+    endpoint: string,
+    options = { refreshUserCredentials: true },
+  ): Promise<unknown> {
     const url = `https://api.spotify.com/v1${endpoint}`;
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${this.#credentials.access_token}`,
       },
     });
-    if (!response.ok) {
-      if (refreshUserCredentials && response.status === 401) {
-        await this.refreshUserCredentials();
-        return this.get(endpoint, false);
-      }
-      await onError(url, response);
+    if (response.status === 401 && options.refreshUserCredentials) {
+      await this.refreshUserCredentials();
+      return this.get(endpoint, { refreshUserCredentials: false });
     }
+    await check(url, response);
     return response.json();
   }
 
@@ -44,9 +45,7 @@ export class SpotifyClient {
       },
       body,
     });
-    if (!response.ok) {
-      await onError(url, response);
-    }
+    await check(url, response);
     const { access_token } = z
       .object({ access_token: z.string() })
       .parse(await response.json());
@@ -78,7 +77,7 @@ export async function createSession(env: Env, code: string): Promise<string> {
 
 async function getCredentials(
   { OAUTH_REDIRECT_URI, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET }: Env,
-  code: string
+  code: string,
 ): Promise<Credentials> {
   const url = "https://accounts.spotify.com/api/token";
   const body = new URLSearchParams({
@@ -95,9 +94,7 @@ async function getCredentials(
     },
     body,
   });
-  if (!response.ok) {
-    await onError(url, response);
-  }
+  await check(url, response);
   return z
     .object({
       access_token: z.string(),

@@ -11,6 +11,23 @@ enabled = true
 OAUTH_REDIRECT_URI = "https://sfplvinyl.com/oauth/callback"
 OAUTH_CLIENT_ID = "f413f5ac653046e7b41f7b8bd2920c5f"
 
+[ai]
+binding = "AI"
+
+[[vectorize]]
+binding = "SFPL_CATALOG_INDEX"
+index_name = "sfpl-catalog-index"
+
+# Workaround for Vite <> Workflows sadness:
+# 1. Comment this block out
+# 2. Run "npm run build"
+# 3. Uncomment this block
+# 4. Run "npx wrangler deploy"
+# [[workflows]]
+# name = "refresh-catalog"
+# binding = "REFRESH_CATALOG"
+# class_name = "RefreshCatalog"
+
 [[kv_namespaces]]
 binding = "SESSION"
 id = "0752632c63d948a89b94da6fdf13cc29"

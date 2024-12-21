@@ -27,7 +27,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   return { oauthUrl };
 };
 
-export default function OAuth() {
+export default function Index() {
   const { oauthUrl } = useLoaderData<typeof loader>();
   return (
     <div className="flex flex-col h-screen items-center justify-center">
@@ -37,7 +37,7 @@ export default function OAuth() {
           Find your top Spotify tracks on vinyl at the San Francisco Public
           Library.
         </div>
-        <a href={oauthUrl} className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center">
+        <a href={oauthUrl} rel="noreferrer" className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center">
           Connect to Spotify
         </a>
         <a

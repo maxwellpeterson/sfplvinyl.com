@@ -37,6 +37,12 @@ export default defineConfig({
     mainFields: ["browser", "module", "main"],
   },
   build: {
-    minify: true,
+    // TODO: True?
+    minify: false,
+    // TODO: Remove?
+    rollupOptions: {
+      external: ["cloudflare:workers"],
+      preserveEntrySignatures: "exports-only",
+    },
   },
 });

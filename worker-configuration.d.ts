@@ -7,4 +7,7 @@ interface Env {
 	OAUTH_CLIENT_SECRET: string;
 	OAUTH_REDIRECT_URI: string;
 	SESSION_SIGNING_SECRET: string;
+	SFPL_CATALOG_INDEX: VectorizeIndex;
+	AI: Ai;
+	REFRESH_CATALOG: Workflow;
 }

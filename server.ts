@@ -3,6 +3,9 @@ import { createRequestHandler, type ServerBuild } from "@remix-run/cloudflare";
 // @ts-ignore This file won’t exist if it hasn’t yet been built
 import * as build from "./build/server"; // eslint-disable-line import/no-unresolved
 import { getLoadContext } from "./load-context";
+import { RefreshCatalog } from "~/workflows/RefreshCatalog";
+
+export { RefreshCatalog };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const handleRemixRequest = createRequestHandler(build as any as ServerBuild);
@@ -33,5 +36,10 @@ export default {
       console.log(error);
       return new Response("An unexpected error occurred", { status: 500 });
     }
+  },
+  async scheduled(event, env) {
+    console.log("Kicking off catalog refresh workflow...");
+    const instance = await env.REFRESH_CATALOG.create();
+    console.log(`Created workflow instance: ${instance.id}`);
   },
 } satisfies ExportedHandler<Env>;
