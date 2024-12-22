@@ -7,6 +7,9 @@ assets = { directory = "./build/client" }
 [observability]
 enabled = true
 
+[triggers]
+crons = ["0 10 * * *"]
+
 [vars]
 OAUTH_REDIRECT_URI = "https://sfplvinyl.com/oauth/callback"
 OAUTH_CLIENT_ID = "f413f5ac653046e7b41f7b8bd2920c5f"

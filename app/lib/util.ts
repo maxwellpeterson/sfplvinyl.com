@@ -25,9 +25,11 @@ export type Album = {
     uri: string;
     name: string;
   }[];
-  imageUrl: string;
+  img: {
+    src: string;
+    href: string;
+  };
   year: string;
-  kind: "album" | "single" | "compilation";
   sfplId?: string;
 };
 
@@ -54,8 +56,9 @@ export function getEmbeddingText(album: {
   name: string;
   artists: string[];
 }): string {
-  // Join with "and" instead of commas since some artist names are formatted as
-  // "Petty, Tom" instead of "Tom Petty" and commas get wonky here.
+  // Join with "and" instead of commas since some artist names are sometimes
+  // formatted as "Petty, Tom" instead of "Tom Petty" and commas are ambiguous
+  // in this situation.
   return `the album ${album.name} by ${album.artists.join(" and ")}`;
 }
 

@@ -2,11 +2,11 @@ import {
   WorkflowEntrypoint,
   WorkflowStep,
   WorkflowEvent,
-  // TODO: Why does this happen?
+  // This module is provided by the Workers runtime.
   // eslint-disable-next-line import/no-unresolved
 } from "cloudflare:workers";
 import { z } from "zod";
-import { check, chunk, getEmbeddingText } from "~/util";
+import { check, chunk, getEmbeddingText } from "~/lib/util";
 
 export class RefreshCatalog extends WorkflowEntrypoint<Env> {
   async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {

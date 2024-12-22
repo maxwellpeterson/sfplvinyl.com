@@ -1,7 +1,7 @@
 import { data, LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
-import { createStateCookie, setupSessionStorage } from "~/session";
-import { OAUTH_SCOPE, meta } from "~/util";
+import { createStateCookie, setupSessionStorage } from "~/lib/session";
+import { OAUTH_SCOPE, meta } from "~/lib/util";
 
 export { meta };
 
@@ -37,7 +37,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 export default function Index() {
   const { oauthUrl } = useLoaderData<typeof loader>();
   return (
-    <div className="h-screen grid items-center justify-center">
+    <div className="w-screen h-screen flex flex-col items-center justify-center">
       <div className="w-min grid gap-2">
         <div className="text-4xl font-bold text-nowrap">SFPL Vinyl Search</div>
         <div className="text-center">
@@ -47,7 +47,7 @@ export default function Index() {
         <a
           href={oauthUrl}
           rel="noreferrer"
-          className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center"
+          className="p-4 bg-green-300 dark:bg-green-400 font-medium text-center"
         >
           Connect to Spotify
         </a>

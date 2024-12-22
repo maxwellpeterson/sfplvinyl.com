@@ -13,6 +13,7 @@ export type User = {
   credentials: Credentials;
 };
 
+/** Credentials used to access the Spotify API. */
 export type Credentials = {
   access_token: string;
   refresh_token: string;

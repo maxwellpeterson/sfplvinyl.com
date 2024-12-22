@@ -1,8 +1,8 @@
 import { LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
 import { Form, useLoaderData } from "@remix-run/react";
 import { z } from "zod";
-import { setupSessionStorage } from "~/session";
-import { searchParams } from "~/util";
+import { setupSessionStorage } from "~/lib/session";
+import { searchParams } from "~/lib/util";
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const { getSession } = setupSessionStorage(context.cloudflare.env);
@@ -16,13 +16,13 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const parsed = SimilarityParamsSchema.safeParse(searchParams(request));
   if (!parsed.success) {
     return { similarity: undefined };
-  } 
+  }
 
   const embeddings = await context.cloudflare.env.AI.run(
     "@cf/baai/bge-base-en-v1.5",
     {
       text: [parsed.data.left, parsed.data.right],
-    }
+    },
   );
 
   return {
@@ -30,11 +30,10 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   };
 };
 
-const SimilarityParamsSchema = z
-  .object({
-    left: z.string().min(1),
-    right: z.string().min(1),
-  })
+const SimilarityParamsSchema = z.object({
+  left: z.string().min(1),
+  right: z.string().min(1),
+});
 
 function cosineSimilarity(vector1: number[], vector2: number[]) {
   if (vector1.length !== vector2.length) {
@@ -71,9 +70,7 @@ export default function Similarity() {
         <input type="text" name="right"></input>
         <button>Compare!</button>
       </Form>
-      <div>
-        Similarity: {similarity ?? "N/A"}
-      </div>
+      <div>Similarity: {similarity ?? "N/A"}</div>
     </div>
   );
 }
