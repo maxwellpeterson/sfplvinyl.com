@@ -102,8 +102,6 @@ async function getTopAlbums(
   env: Env,
   { items }: TopTracksResponse,
 ): Promise<Album[]> {
-  // TODO: remove!
-  // await new Promise((resolve) => setTimeout(resolve, 1000));
   const albums = items
     .filter((track) => track.album.album_type === "album")
     .reduce((acc, track) => {
@@ -132,11 +130,19 @@ async function getTopAlbums(
     ),
   });
 
-  for (const [i, embedding] of embeddings.data.entries()) {
-    const results = await env.SFPL_CATALOG_INDEX.query(embedding);
-    if (results.matches.length > 0 && results.matches[0].score >= 0.88) {
-      albums[i].sfplId = results.matches[0].id;
-    }
+  const sfplIds = await Promise.all(
+    embeddings.data.map(async (embedding) => {
+      const {
+        matches: [match],
+      } = await env.SFPL_CATALOG_INDEX.query(embedding, { topK: 1 });
+      if (match.score >= 0.88) {
+        return match.id;
+      }
+      return undefined;
+    }),
+  );
+  for (const [i, album] of albums.entries()) {
+    album.sfplId = sfplIds[i];
   }
 
   return albums;
@@ -148,12 +154,24 @@ export default function Search() {
   const navigation = useNavigation();
   const submit = useSubmit();
   const currentTimeRange = searchParams.get("time_range") || defaultTimeRange;
-  // console.log(navigation.state + ":" + navigation.location?.search + ":" + currentTimeRange);
+  // We want the album list to fall back into a suspended state as soon as the
+  // time range is changed and navigation begins, which we force to happen by
+  // changing the suspense key. Importantly, the suspense key shouldn't change
+  // when navigation completes (but the data is still loading), otherwise the
+  // fallback component will be re-mounted and the loading animation will be
+  // awkwardly interrupted.
   const suspenseKey =
-    navigation.location?.search ?? "?" + searchParams.toString();
+    new URLSearchParams(navigation.location?.search).get("time_range") ||
+    currentTimeRange;
+  // The albums list doesn't turn back into a promise until navigation
+  // completes, but we want to fall back into a suspended state as soon as
+  // navigation begins. We achieve this by suspending based on a second promise
+  // that resolves when navigation completes, at which point the albums list
+  // becomes the suspending promise.
   const navigationPromise =
-    navigation.state === "loading" ? new Promise(() => {}) : Promise.resolve();
-  console.log(`suspense key: ${suspenseKey}`);
+    navigation.state === "loading" && navigation.location.pathname === "/search"
+      ? new Promise(() => {})
+      : Promise.resolve();
 
   return (
     <div className="w-full">

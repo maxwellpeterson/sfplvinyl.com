@@ -1,9 +1,9 @@
-import { LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
+import { data, LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
 import { useLoaderData } from "@remix-run/react";
-import { setupSessionStorage } from "~/session";
+import { createStateCookie, setupSessionStorage } from "~/session";
 import { OAUTH_SCOPE, meta } from "~/util";
 
-export {meta}
+export { meta };
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const { getSession } = setupSessionStorage(context.cloudflare.env);
@@ -16,6 +16,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const {
     env: { OAUTH_REDIRECT_URI, OAUTH_CLIENT_ID },
   } = context.cloudflare;
+  const state = crypto.randomUUID();
   const oauthUrl =
     "https://accounts.spotify.com/authorize?" +
     new URLSearchParams({
@@ -23,21 +24,31 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
       client_id: OAUTH_CLIENT_ID,
       scope: OAUTH_SCOPE,
       redirect_uri: OAUTH_REDIRECT_URI,
+      state,
     });
-  return { oauthUrl };
+
+  const stateCookie = createStateCookie(context.cloudflare.env);
+  return data(
+    { oauthUrl },
+    { headers: { "Set-Cookie": await stateCookie.serialize(state) } },
+  );
 };
 
 export default function Index() {
   const { oauthUrl } = useLoaderData<typeof loader>();
   return (
-    <div className="flex flex-col h-screen items-center justify-center">
-      <div className="w-min grid align-center gap-2">
+    <div className="h-screen grid items-center justify-center">
+      <div className="w-min grid gap-2">
         <div className="text-4xl font-bold text-nowrap">SFPL Vinyl Search</div>
         <div className="text-center">
           Find your top Spotify tracks on vinyl at the San Francisco Public
           Library.
         </div>
-        <a href={oauthUrl} rel="noreferrer" className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center">
+        <a
+          href={oauthUrl}
+          rel="noreferrer"
+          className="p-4 bg-green-300 dark:bg-green-600 font-medium text-center"
+        >
           Connect to Spotify
         </a>
         <a

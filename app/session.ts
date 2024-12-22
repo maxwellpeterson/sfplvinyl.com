@@ -1,4 +1,7 @@
-import { createWorkersKVSessionStorage } from "@remix-run/cloudflare";
+import {
+  createCookie,
+  createWorkersKVSessionStorage,
+} from "@remix-run/cloudflare";
 
 export type SessionData = {
   user: User;
@@ -23,5 +26,12 @@ export function setupSessionStorage(env: Env) {
       maxAge: 7 * 24 * 60 * 60,
       secrets: [env.SESSION_SIGNING_SECRET],
     },
+  });
+}
+
+export function createStateCookie(env: Env) {
+  return createCookie("__state", {
+    maxAge: 60 * 60,
+    secrets: [env.SESSION_SIGNING_SECRET],
   });
 }
