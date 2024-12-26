@@ -15,7 +15,7 @@ import { SpotifyClient } from "~/lib/spotify";
 import { LogoutButton } from "~/components/LogoutButton";
 import { AlbumRow } from "~/components/AlbumRow";
 import { AlbumRowLoading } from "~/components/AlbumRowLoading";
-import { getAlbums } from "~/lib/search";
+import { getTopAlbums } from "~/lib/search";
 
 export { meta };
 
@@ -51,13 +51,13 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const spotify = new SpotifyClient(context.cloudflare.env, user.credentials);
   return {
     user: { name: user.name },
-    albums: getAlbums({
+    albums: getTopAlbums({
       env: context.cloudflare.env,
       spotify,
       time_range: parsed.data.time_range,
     }).then((albums) => {
-      // Update session credentials in case Spotify API calls triggered a credential
-      // refresh.
+      // Update session credentials in case Spotify API calls triggered an
+      // access token refresh.
       session.set("user", { ...user, credentials: spotify.credentials });
       context.cloudflare.ctx.waitUntil(commitSession(session));
       // Cache search results for the current time range for one hour.

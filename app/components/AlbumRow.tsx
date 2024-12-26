@@ -7,6 +7,7 @@ export type AlbumRowProps = {
   availability: React.ReactNode;
 };
 
+/** One row in the table of search results. */
 export function AlbumRow({
   cover,
   name,

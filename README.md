@@ -1,43 +1,22 @@
-# Welcome to Remix + Cloudflare Workers!
+# sfplvinyl.com
 
-- 📖 [Remix docs](https://remix.run/docs)
-- 📖 [Remix Cloudflare docs](https://remix.run/guides/vite#cloudflare)
+Find your top Spotify tracks on vinyl at the San Francisco Public Library.
 
-## Development
+## Usage
 
-Run the dev server:
+**Note:** A Spotify account is required to use this application.
 
-```sh
-npm run dev
-```
+1. Visit [sfplvinyl.com](https://sfplvinyl.com)
+2. Click the "Connect to Spotify" button
+3. Grant Spotify permissions (permission scope is limited to just one API endpoint)
+4. You will be redirected to [sfplvinyl.com/search](https://sfplvinyl.com/search) and should see your results appear shortly
 
-To run Wrangler:
+## How It Works
 
-```sh
-npm run build
-npm start
-```
+This application is built with [Remix](https://remix.run/) and deployed with [Cloudflare Workers](https://workers.cloudflare.com/). It uses [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/), [Workflows](https://developers.cloudflare.com/workflows/), [Workers AI](https://developers.cloudflare.com/workers-ai/), and [Vectorize](https://developers.cloudflare.com/vectorize/) to continuously collect, index, and search all of the LPs available at the San Francisco Public Library (currently about 6,000 distinct titles).
 
-## Typegen
+## Local Development
 
-Generate types for your Cloudflare bindings in `wrangler.toml`:
+You'll need to create and configure your own [Spotify OAuth app](https://developer.spotify.com/documentation/web-api/concepts/apps) before running this application locally. Make sure to add `http://localhost:5173/oauth/callback` as a redirect URI and add the email address associated with your Spotify account to the authorized user list.
 
-```sh
-npm run typegen
-```
-
-You will need to rerun typegen whenever you make changes to `wrangler.toml`.
-
-## Deployment
-
-If you don't already have an account, then [create a cloudflare account here](https://dash.cloudflare.com/sign-up) and after verifying your email address with Cloudflare, go to your dashboard and set up your free custom Cloudflare Workers subdomain.
-
-Once that's done, you should be able to deploy your app:
-
-```sh
-npm run deploy
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever css framework you prefer. See the [Vite docs on css](https://vitejs.dev/guide/features.html#css) for more information.
+After cloning the repository and running `npm install`, copy `.dev.vars.template` to `.dev.vars` and open `.dev.vars` for editing. Set `OAUTH_CLIENT_SECRET` to the client secret found in the Spotify developer dashboard, and set `SESSION_SIGNING_SECRET` to some random string, such as the output of `openssl rand -hex 16`. At this point you can run `npm run dev`, open up a browser, and begin hacking.

@@ -8,6 +8,11 @@ import {
 import { z } from "zod";
 import { check, chunk, getEmbeddingText } from "~/lib/util";
 
+/**
+ * A Workflow that collects (via API) all of the LPs available at San Francisco
+ * Public Library (currently around 6,000), generates text embeddings for them,
+ * and stored the generated embeddings in a vector database.
+ */
 export class RefreshCatalog extends WorkflowEntrypoint<Env> {
   async run(event: WorkflowEvent<unknown>, step: WorkflowStep) {
     const { pages, albums } = await step.do(
@@ -21,6 +26,7 @@ export class RefreshCatalog extends WorkflowEntrypoint<Env> {
       },
     );
 
+    // We expect around 225 pages of search results with 25 items each.
     for (let page = 2; page <= pages; page++) {
       const albumBatch = await step.do(
         `fetch page ${page} of search results from sfpl`,
@@ -82,7 +88,7 @@ async function getSearchResults({ page }: { page: number }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "curl/7.81.0",
+      "User-Agent": "curl/7.81.0", // Actually necessary.
     },
     body,
   });

@@ -8,6 +8,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const { data, success } = CallbackParamsSchema.safeParse(
     searchParams(request),
   );
+  // The state parameter is stored as cookie prior to starting the OAuth flow,
+  // and checked against the state parameter echoed back by Spotify.
   const stateCookie = createStateCookie(context.cloudflare.env);
   const state = await stateCookie.parse(request.headers.get("Cookie"));
   if (!success || state !== data.state) {

@@ -2,7 +2,11 @@ import { SpotifyClient } from "./spotify";
 import { Album, cosineSimilarity, getEmbeddingText } from "./util";
 import { z } from "zod";
 
-export async function getAlbums({
+/**
+ * Returns a list of the user's top albums over the specified time range,
+ * including information about the corresponding library LP if one exists.
+ */
+export async function getTopAlbums({
   env,
   spotify,
   time_range,
@@ -11,22 +15,25 @@ export async function getAlbums({
   spotify: SpotifyClient;
   time_range: "short_term" | "medium_term" | "long_term";
 }): Promise<Album[]> {
+  // https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks
   const response = await spotify.get(
     `/me/top/tracks?` +
       new URLSearchParams({
-        limit: "50",
+        limit: "50", // The maximum possible number of results.
         time_range,
       }),
   );
   const { items } = TopTracksResponseSchema.parse(response);
 
+  // TODO: Singles are sometimes re-released on full albums, and we'd like to
+  // remap these to their full albums if they exist. For now, we ignore them.
   const tracks = items.filter((track) => track.album.album_type === "album");
   const embeddings = await env.AI.run("@cf/baai/bge-base-en-v1.5", {
     text: tracks.map(({ album: { name, artists } }) =>
       getEmbeddingText({ name, artists: artists.map((artist) => artist.name) }),
     ),
   });
-  const albumEmbeddings = embeddings.data.reduce(
+  const albumEmbedding = embeddings.data.reduce(
     (acc, embedding, i) => ({
       ...acc,
       [tracks[i].album.uri]: embedding,
@@ -35,21 +42,27 @@ export async function getAlbums({
   );
 
   const albums = tracks.reduce((acc, track) => {
+    // We use vector similarity instead of uri equality here to combine
+    // re-releases of the same album. For example, "Unplugged (Live) by Eric
+    // Clapton" and "Unplugged (Live) (Deluxe Edition) by Eric Clapton" should
+    // be combined together into one entry.
     const existingAlbum = acc.find(
       (album) =>
         cosineSimilarity(
-          albumEmbeddings[album.uri],
-          albumEmbeddings[track.album.uri],
-        ) >= 0.88,
+          albumEmbedding[album.uri],
+          albumEmbedding[track.album.uri],
+        ) >= similarityThreshold,
     );
     if (existingAlbum) {
       const existingTrack = existingAlbum.topTracks.find(
         (topTrack) => topTrack.name === track.name,
       );
       if (!existingTrack) {
+        // We've got a new track on an existing album.
         existingAlbum.topTracks.push(track);
       }
     } else {
+      // We've got a new album altogether.
       acc.push({
         uri: track.album.uri,
         name: track.album.name,
@@ -67,12 +80,14 @@ export async function getAlbums({
 
   await Promise.all(
     albums.map(async (album) => {
+      // Run a vector search against the SFPL catalog to find a matching LP if
+      // one exists.
       const {
         matches: [match],
-      } = await env.SFPL_CATALOG_INDEX.query(albumEmbeddings[album.uri], {
+      } = await env.SFPL_CATALOG_INDEX.query(albumEmbedding[album.uri], {
         topK: 1,
       });
-      if (match.score >= 0.88) {
+      if (match.score >= similarityThreshold) {
         album.sfplId = match.id;
       }
     }),
@@ -83,6 +98,7 @@ export async function getAlbums({
   return albums;
 }
 
+// https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks
 const TopTracksResponseSchema = z.object({
   items: z.array(
     z.object({
@@ -113,3 +129,9 @@ const TopTracksResponseSchema = z.object({
     }),
   ),
 });
+
+/**
+ * If two album embeddings have a cosine similarity value greater than or equal
+ * to this threshold, we consider them equal.
+ */
+const similarityThreshold = 0.88;

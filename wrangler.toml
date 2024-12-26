@@ -21,11 +21,10 @@ binding = "AI"
 binding = "SFPL_CATALOG_INDEX"
 index_name = "sfpl-catalog-index"
 
-# Workaround for Vite <> Workflows sadness:
-# 1. Comment this block out
-# 2. Run "npm run build"
-# 3. Uncomment this block
-# 4. Run "npx wrangler deploy"
+# To deploy:
+#  1. Run "npm run build"
+#  2. Uncomment this block
+#  3. Run "npx wrangler deploy"
 # [[workflows]]
 # name = "refresh-catalog"
 # binding = "REFRESH_CATALOG"
