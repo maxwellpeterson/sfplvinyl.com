@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Credentials, setupSessionStorage } from "~/lib/session";
-import { check } from "~/lib/util";
+import { check } from "./util";
 
 export class SpotifyClient {
   readonly #env: Env;

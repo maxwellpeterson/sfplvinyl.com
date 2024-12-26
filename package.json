@@ -8,11 +8,8 @@
     "deploy": "npm run build && wrangler deploy",
     "dev": "remix vite:dev",
     "lint": "eslint --ignore-path .gitignore --cache --cache-location ./node_modules/.cache/eslint .",
-    "start": "wrangler dev --port=5173",
     "typecheck": "tsc",
     "typegen": "wrangler types",
-    "preview": "npm run build && wrangler dev --port=5173",
-    "cf-typegen": "wrangler types",
     "format": "prettier --write ."
   },
   "dependencies": {

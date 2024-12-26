@@ -1,25 +1,26 @@
-import { data, redirect, type LoaderFunctionArgs } from "@remix-run/cloudflare";
+import { redirect, type LoaderFunctionArgs } from "@remix-run/cloudflare";
 import { setupSessionStorage } from "~/lib/session";
 import {
   Await,
   Form,
   useLoaderData,
-  useNavigation,
+  useRevalidator,
   useSearchParams,
   useSubmit,
 } from "@remix-run/react";
 import { z } from "zod";
 import { Suspense } from "react";
-import { Album, getEmbeddingText, meta, searchParams } from "~/lib/util";
+import { Album, meta, searchParams } from "~/lib/util";
 import { SpotifyClient } from "~/lib/spotify";
 import { LogoutButton } from "~/components/LogoutButton";
 import { AlbumRow } from "~/components/AlbumRow";
 import { AlbumRowLoading } from "~/components/AlbumRowLoading";
+import { getAlbums } from "~/lib/search";
 
 export { meta };
 
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
-  const { getSession, commitSession, destroySession } = setupSessionStorage(
+  const { getSession, commitSession } = setupSessionStorage(
     context.cloudflare.env,
   );
   const session = await getSession(request.headers.get("Cookie"));
@@ -35,38 +36,43 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
     return redirect("/search");
   }
 
-  const spotify = new SpotifyClient(context.cloudflare.env, user.credentials);
-  const response = await spotify
-    .get(
-      `/me/top/tracks?` +
-        new URLSearchParams({
-          limit: "50",
-          time_range: parsed.data.time_range,
-        }),
-    )
-    .catch(async () => {
-      throw redirect("/", {
-        headers: { "Set-Cookie": await destroySession(session) },
-      });
-    });
-
-  // Update session credentials in case Spotify API calls triggered a credential
-  // refresh.
-  session.set("user", { ...user, credentials: spotify.credentials });
-  return data(
-    {
-      user: { name: user.name },
-      albums: getTopAlbums(
-        context.cloudflare.env,
-        TopTracksResponseSchema.parse(response),
-      ),
-    },
-    {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    },
+  const cacheKey = `${user.uri}|${parsed.data.time_range}`;
+  const cached: Album[] | null = await context.cloudflare.env.RESULT_CACHE.get(
+    cacheKey,
+    "json",
   );
+  if (cached) {
+    return {
+      user: { name: user.name },
+      albums: cached,
+    };
+  }
+
+  const spotify = new SpotifyClient(context.cloudflare.env, user.credentials);
+  return {
+    user: { name: user.name },
+    albums: getAlbums({
+      env: context.cloudflare.env,
+      spotify,
+      time_range: parsed.data.time_range,
+    }).then((albums) => {
+      // Update session credentials in case Spotify API calls triggered a credential
+      // refresh.
+      session.set("user", { ...user, credentials: spotify.credentials });
+      context.cloudflare.ctx.waitUntil(commitSession(session));
+      // Cache search results for the current time range for one hour.
+      context.cloudflare.ctx.waitUntil(
+        context.cloudflare.env.RESULT_CACHE.put(
+          cacheKey,
+          JSON.stringify(albums),
+          {
+            expirationTtl: 60 * 60,
+          },
+        ),
+      );
+      return albums;
+    }),
+  };
 };
 
 const defaultTimeRange = "short_term";
@@ -76,111 +82,13 @@ const SearchParamsSchema = z.object({
     .default(defaultTimeRange),
 });
 
-const TopTracksResponseSchema = z.object({
-  items: z.array(
-    z.object({
-      uri: z.string(),
-      name: z.string(),
-      album: z.object({
-        uri: z.string(),
-        name: z.string(),
-        artists: z.array(
-          z.object({
-            uri: z.string(),
-            name: z.string(),
-          }),
-        ),
-        images: z.array(
-          z.object({
-            url: z.string(),
-            height: z.number(),
-            width: z.number(),
-          }),
-        ),
-        release_date: z.string(),
-        album_type: z.string(),
-        external_urls: z.object({
-          spotify: z.string(),
-        }),
-      }),
-    }),
-  ),
-});
-type TopTracksResponse = z.infer<typeof TopTracksResponseSchema>;
-
-async function getTopAlbums(
-  env: Env,
-  { items }: TopTracksResponse,
-): Promise<Album[]> {
-  const albums = items
-    .filter((track) => track.album.album_type === "album")
-    .reduce((acc, track) => {
-      const existing = acc.find((album) => album.uri === track.album.uri);
-      if (existing !== undefined) {
-        existing.topTracks.push(track);
-      } else {
-        acc.push({
-          uri: track.album.uri,
-          name: track.album.name,
-          artists: track.album.artists,
-          topTracks: [track],
-          year: track.album.release_date.split("-")[0],
-          img: {
-            src: track.album.images.find((image) => image.width === 64)!.url,
-            href: track.album.external_urls.spotify,
-          },
-        });
-      }
-      return acc;
-    }, [] as Album[]);
-
-  const embeddings = await env.AI.run("@cf/baai/bge-base-en-v1.5", {
-    text: albums.map(({ name, artists }) =>
-      getEmbeddingText({ name, artists: artists.map((artist) => artist.name) }),
-    ),
-  });
-
-  await Promise.all(
-    embeddings.data.map(async (embedding, i) => {
-      const {
-        matches: [match],
-      } = await env.SFPL_CATALOG_INDEX.query(embedding, { topK: 1 });
-      if (match.score >= 0.88) {
-        albums[i].sfplId = match.id;
-      }
-    }),
-  );
-  // Return albums available at the SFPL first.
-  albums.sort((a, b) => Number(Boolean(b.sfplId)) - Number(Boolean(a.sfplId)));
-
-  return albums;
-}
-
 export default function Search() {
   const { user, albums } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
-  const navigation = useNavigation();
+  const revalidator = useRevalidator();
   const submit = useSubmit();
+
   const currentTimeRange = searchParams.get("time_range") || defaultTimeRange;
-  // We want the album list to fall back into a suspended state as soon as the
-  // time range is changed and navigation begins, which we force to happen by
-  // changing the suspense key. Importantly, the suspense key shouldn't change
-  // when navigation completes (but the data is still loading), otherwise the
-  // fallback component will be re-mounted and the loading animation will be
-  // awkwardly interrupted.
-  const suspenseKey =
-    new URLSearchParams(navigation.location?.search).get("time_range") ||
-    currentTimeRange;
-  // The albums list doesn't turn back into a promise until navigation
-  // completes, but we want to fall back into a suspended state as soon as
-  // navigation begins. We achieve this by suspending based on a second promise
-  // that resolves when navigation completes, at which point the albums list
-  // becomes the suspending promise.
-  const navigationPromise =
-    navigation.state === "loading" && navigation.location.pathname === "/search"
-      ? new Promise(() => {})
-      : // : Promise.resolve();
-        Promise.reject();
 
   return (
     <div className="w-full">
@@ -196,7 +104,13 @@ export default function Search() {
               }}
               className="inline"
             >
-              <select name="time_range" defaultValue={currentTimeRange}>
+              <select
+                name="time_range"
+                value={currentTimeRange}
+                // Include stub handler to prevent angry warning about setting
+                // value without onChange.
+                onChange={() => {}}
+              >
                 <option id="short_term" value="short_term">
                   month
                 </option>
@@ -222,7 +136,7 @@ export default function Search() {
           </div>
         ))}
         <Suspense
-          key={suspenseKey}
+          key={currentTimeRange + revalidator.state}
           fallback={
             <>
               {[1, 2, 3, 4, 5].map((i) => (
@@ -232,10 +146,24 @@ export default function Search() {
           }
         >
           <Await
-            resolve={Promise.all([albums, navigationPromise])}
-            errorElement="Oh no!"
+            resolve={albums}
+            errorElement={
+              <div className="md:col-start-2 border-b md:border-none px-6 py-12 flex flex-col items-center">
+                <div className="w-min">
+                  <div className="pb-2 text-lg text-nowrap">
+                    Oh no! Something went wrong.
+                  </div>
+                  <button
+                    className="w-full p-4 font-medium bg-gray-200"
+                    onClick={() => revalidator.revalidate()}
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            }
           >
-            {([albums]) => (
+            {(albums) => (
               <>
                 {albums.map((album) => (
                   <AlbumRow

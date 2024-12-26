@@ -36,5 +36,5 @@ binding = "SESSION"
 id = "0752632c63d948a89b94da6fdf13cc29"
 
 [[kv_namespaces]]
-binding = "SPOTIFY_TO_SFPL"
-id = "2514e9492d5443df9f5ae4009f5cba72"
+binding = "RESULT_CACHE"
+id = "ca7775a0900a47ffb7a25598f2bb509b"

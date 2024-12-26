@@ -1,4 +1,4 @@
-import { LoaderFunctionArgs, redirect } from "@remix-run/server-runtime";
+import { LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
 import { z } from "zod";
 import { createStateCookie } from "~/lib/session";
 import { createSession } from "~/lib/spotify";
