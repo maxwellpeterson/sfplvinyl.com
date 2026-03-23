@@ -1,15 +1,14 @@
 import { redirect, type LoaderFunctionArgs } from "react-router";
 import { setupSessionStorage } from "~/lib/session";
 import {
-  Await,
   Form,
   useLoaderData,
+  useNavigation,
   useRevalidator,
   useSearchParams,
   useSubmit,
 } from "react-router";
 import { z } from "zod";
-import { Suspense } from "react";
 import { Album, meta, searchParams } from "~/lib/util";
 import { SpotifyClient } from "~/lib/spotify";
 import { LogoutButton } from "~/components/LogoutButton";
@@ -85,10 +84,13 @@ const SearchParamsSchema = z.object({
 export default function Search() {
   const { user, albums } = useLoaderData<typeof loader>();
   const [searchParams] = useSearchParams();
+  const navigation = useNavigation();
   const revalidator = useRevalidator();
   const submit = useSubmit();
 
   const currentTimeRange = searchParams.get("time_range") || defaultTimeRange;
+  const isLoading =
+    navigation.state === "loading" || revalidator.state === "loading";
 
   return (
     <div className="w-full">
@@ -135,80 +137,64 @@ export default function Search() {
             {header}
           </div>
         ))}
-        <Suspense
-          key={currentTimeRange + revalidator.state}
-          fallback={
-            <>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <AlbumRowLoading key={i} />
-              ))}
-            </>
-          }
-        >
-          <Await
-            resolve={albums}
-            errorElement={
-              <div className="md:col-start-2 border-b md:border-none px-6 py-12 flex flex-col items-center">
-                <div className="w-min">
-                  <div className="pb-2 text-lg text-nowrap">
-                    Oh no! Something went wrong.
-                  </div>
-                  <button
-                    className="w-full p-4 font-medium bg-gray-200"
-                    onClick={() => revalidator.revalidate()}
-                  >
-                    Retry
-                  </button>
-                </div>
-              </div>
-            }
-          >
-            {(albums) => (
-              <>
-                {albums.map((album) => (
-                  <AlbumRow
-                    key={album.uri}
-                    cover={
-                      <a href={album.img.href} rel="noreferrer" target="_blank">
-                        <img
-                          src={album.img.src}
-                          alt={album.name}
-                          className="w-16-h-16"
-                        />
-                      </a>
-                    }
-                    name={album.name}
-                    artists={album.artists
-                      .map((artist) => artist.name)
-                      .join(", ")}
-                    year={album.year}
-                    tracks={album.topTracks
-                      .slice(0, 3)
-                      .map(({ name }, i) => `${["🥇", "🥈", "🥉"][i]} ${name}`)}
-                    availability={
-                      album.sfplId ? (
-                        <a
-                          href={`https://sfpl.bibliocommons.com/v2/record/${album.sfplId}`}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <span className="underline underline-offset-2">
-                            Available at the San Francisco Public Library
-                          </span>{" "}
-                          🎉
-                        </a>
-                      ) : (
-                        <span className="italic">
-                          Not available at the San Francisco Public Library
-                        </span>
-                      )
-                    }
+        {isLoading ? (
+          [1, 2, 3, 4, 5].map((i) => <AlbumRowLoading key={i} />)
+        ) : Array.isArray(albums) ? (
+          albums.map((album) => (
+            <AlbumRow
+              key={album.uri}
+              cover={
+                <a href={album.img.href} rel="noreferrer" target="_blank">
+                  <img
+                    src={album.img.src}
+                    alt={album.name}
+                    className="w-16-h-16"
                   />
-                ))}
-              </>
-            )}
-          </Await>
-        </Suspense>
+                </a>
+              }
+              name={album.name}
+              artists={album.artists
+                .map((artist) => artist.name)
+                .join(", ")}
+              year={album.year}
+              tracks={album.topTracks
+                .slice(0, 3)
+                .map(({ name }, i) => `${["🥇", "🥈", "🥉"][i]} ${name}`)}
+              availability={
+                album.sfplId ? (
+                  <a
+                    href={`https://sfpl.bibliocommons.com/v2/record/${album.sfplId}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    <span className="underline underline-offset-2">
+                      Available at the San Francisco Public Library
+                    </span>{" "}
+                    🎉
+                  </a>
+                ) : (
+                  <span className="italic">
+                    Not available at the San Francisco Public Library
+                  </span>
+                )
+              }
+            />
+          ))
+        ) : (
+          <div className="md:col-start-2 border-b md:border-none px-6 py-12 flex flex-col items-center">
+            <div className="w-min">
+              <div className="pb-2 text-lg text-nowrap">
+                Oh no! Something went wrong.
+              </div>
+              <button
+                className="w-full p-4 font-medium bg-gray-200"
+                onClick={() => revalidator.revalidate()}
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       <LogoutButton className="md:hidden p-6" />
     </div>
