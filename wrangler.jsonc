@@ -1,0 +1,36 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sfplvinyl",
+  "compatibility_date": "2026-03-23",
+  "main": "./server.ts",
+  "assets": { "directory": "./build/client" },
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["0 10 * * *"] },
+  "vars": {
+    "OAUTH_CLIENT_ID": "f413f5ac653046e7b41f7b8bd2920c5f"
+  },
+  "ai": { "binding": "AI" },
+  "vectorize": [
+    {
+      "binding": "SFPL_CATALOG_INDEX",
+      "index_name": "sfpl-catalog-index"
+    }
+  ],
+  "workflows": [
+    {
+      "name": "refresh-catalog",
+      "binding": "REFRESH_CATALOG",
+      "class_name": "RefreshCatalog"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "0752632c63d948a89b94da6fdf13cc29"
+    },
+    {
+      "binding": "RESULT_CACHE",
+      "id": "ca7775a0900a47ffb7a25598f2bb509b"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { type MetaFunction } from "@remix-run/cloudflare";
+import { type MetaFunction } from "react-router";
 
 /** The OAuth scope our application requests from Spotify. */
 export const OAUTH_SCOPE = "user-top-read";
@@ -43,6 +43,15 @@ export const meta: MetaFunction = () => {
     },
   ];
 };
+
+/** Returns the OAuth redirect URI derived from the request origin. */
+export function getRedirectUri(request: Request) {
+  const url = new URL(request.url);
+  const origin = url.hostname === "localhost"
+    ? url.origin.replace("localhost", "127.0.0.1")
+    : url.origin;
+  return `${origin}/oauth/callback`;
+}
 
 /** Returns the URL search params of the request as an object. */
 export function searchParams(request: Request) {

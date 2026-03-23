@@ -53,8 +53,8 @@ export class SpotifyClient {
  * Completes the OAuth flow using the given authorization code and returns a
  * serialized session cookie.
  */
-export async function createSession(env: Env, code: string): Promise<string> {
-  const spotify = new SpotifyClient(env, await getCredentials(env, code));
+export async function createSession(env: Env, code: string, redirectUri: string): Promise<string> {
+  const spotify = new SpotifyClient(env, await getCredentials(env, code, redirectUri));
   const profile = z
     .object({
       uri: z.string(),
@@ -77,14 +77,15 @@ export async function createSession(env: Env, code: string): Promise<string> {
  * @see https://developer.spotify.com/documentation/web-api/tutorials/code-flow
  */
 async function getCredentials(
-  { OAUTH_REDIRECT_URI, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET }: Env,
+  { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET }: Env,
   code: string,
+  redirectUri: string,
 ): Promise<Credentials> {
   const url = "https://accounts.spotify.com/api/token";
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: OAUTH_REDIRECT_URI,
+    redirect_uri: redirectUri,
     client_id: OAUTH_CLIENT_ID,
     client_secret: OAUTH_CLIENT_SECRET,
   });

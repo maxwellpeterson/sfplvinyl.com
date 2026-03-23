@@ -1,9 +1,9 @@
 node_modules
 
 /.wrangler
+/.react-router
 /build
 .env
-.dev.vars
 
 .wrangler
 .vscode
