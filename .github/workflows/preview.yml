@@ -1,0 +1,87 @@
+# Creates a Worker Preview deployment on pull requests
+#
+# Required secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+# Add them at: Settings → Secrets and variables → Actions → New repository secret
+
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install wrangler prerelease
+        run: npm install https://pkg.pr.new/wrangler@12983
+
+      - name: Deploy preview
+        id: preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          preview_name=$(echo "${{ github.head_ref }}" | cut -c1-53)
+          output=$(npm run deploy:preview -- --name "$preview_name" 2>&1)
+          exit_code=$?
+          set -e
+          echo "$output"
+          url=$(echo "$output" | grep -oP 'https://[^\s"]+\.workers\.dev[^\s"]*' | head -1)
+          if [ -n "$url" ]; then
+            echo "url=$url" >> "$GITHUB_OUTPUT"
+          fi
+          exit $exit_code
+
+      - name: Post preview comment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `${{ steps.preview.outputs.url }}`;
+
+            const body = url
+              ? `### Preview deployment\n\n${url}`
+              : `### Preview deployment\n\nDeployment succeeded but no URL was found in wrangler output.`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c =>
+              c.user.login === 'github-actions[bot]' &&
+              c.body.startsWith('### Preview deployment')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

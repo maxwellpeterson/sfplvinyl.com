@@ -1,7 +1,7 @@
-import { data, LoaderFunctionArgs, redirect } from "@remix-run/cloudflare";
-import { useLoaderData } from "@remix-run/react";
+import { data, LoaderFunctionArgs, redirect } from "react-router";
+import { useLoaderData } from "react-router";
 import { createStateCookie, setupSessionStorage } from "~/lib/session";
-import { OAUTH_SCOPE, meta } from "~/lib/util";
+import { getRedirectUri, OAUTH_SCOPE, meta } from "~/lib/util";
 
 export { meta };
 
@@ -13,9 +13,8 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
     return redirect("/search");
   }
 
-  const {
-    env: { OAUTH_REDIRECT_URI, OAUTH_CLIENT_ID },
-  } = context.cloudflare;
+  const { OAUTH_CLIENT_ID } = context.cloudflare.env;
+  const redirectUri = getRedirectUri(request);
   const state = crypto.randomUUID();
   const oauthUrl =
     "https://accounts.spotify.com/authorize?" +
@@ -23,7 +22,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
       response_type: "code",
       client_id: OAUTH_CLIENT_ID,
       scope: OAUTH_SCOPE,
-      redirect_uri: OAUTH_REDIRECT_URI,
+      redirect_uri: redirectUri,
       state,
     });
 

@@ -1,7 +1,6 @@
 {
   "include": [
     "worker-configuration.d.ts",
-    "env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/.server/**/*.ts",
@@ -10,9 +9,9 @@
     "**/.client/**/*.tsx"
   ],
   "compilerOptions": {
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "lib": ["DOM", "DOM.Iterable", "ES2024"],
     "types": [
-        "@remix-run/cloudflare",
+        "@react-router/cloudflare",
         "vite/client",
         "@cloudflare/workers-types"
     ],
@@ -21,7 +20,7 @@
     "jsx": "react-jsx",
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
-    "target": "ES2022",
+    "target": "ES2024",
     "strict": true,
     "allowJs": true,
     "skipLibCheck": true,
@@ -30,8 +29,6 @@
     "paths": {
       "~/*": ["./app/*"]
     },
-
-    // Remix takes care of building everything in `remix build`.
     "noEmit": true
   }
 }

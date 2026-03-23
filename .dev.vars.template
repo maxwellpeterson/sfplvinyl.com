@@ -1,3 +1,0 @@
-OAUTH_CLIENT_SECRET = ""
-OAUTH_REDIRECT_URI = "http://localhost:5173/oauth/callback"
-SESSION_SIGNING_SECRET = ""

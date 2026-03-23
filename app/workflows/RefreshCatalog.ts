@@ -46,13 +46,13 @@ export class RefreshCatalog extends WorkflowEntrypoint<Env> {
           const text = batch.map(({ briefInfo: { title, authors } }) =>
             getEmbeddingText({ name: title, artists: authors }),
           );
-          const embeddings = await this.env.AI.run(
+          const embeddings = (await this.env.AI.run(
             "@cf/baai/bge-base-en-v1.5",
             {
               text,
             },
-          );
-          return embeddings.data.map((values, i) => ({
+          )) as { data: number[][] };
+          return embeddings.data.map((values: number[], i: number) => ({
             id: batch[i].id,
             values,
             metadata: {

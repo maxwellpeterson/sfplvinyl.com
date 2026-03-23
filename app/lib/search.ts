@@ -28,13 +28,13 @@ export async function getTopAlbums({
   // TODO: Singles are sometimes re-released on full albums, and we'd like to
   // remap these to their full albums if they exist. For now, we ignore them.
   const tracks = items.filter((track) => track.album.album_type === "album");
-  const embeddings = await env.AI.run("@cf/baai/bge-base-en-v1.5", {
+  const embeddings = (await env.AI.run("@cf/baai/bge-base-en-v1.5", {
     text: tracks.map(({ album: { name, artists } }) =>
       getEmbeddingText({ name, artists: artists.map((artist) => artist.name) }),
     ),
-  });
+  })) as { data: number[][] };
   const albumEmbedding = embeddings.data.reduce(
-    (acc, embedding, i) => ({
+    (acc: Record<string, number[]>, embedding: number[], i: number) => ({
       ...acc,
       [tracks[i].album.uri]: embedding,
     }),

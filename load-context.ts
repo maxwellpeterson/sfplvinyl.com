@@ -10,11 +10,8 @@ type GetLoadContextArgs = {
   };
 };
 
-declare module "@remix-run/cloudflare" {
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
-  interface AppLoadContext extends ReturnType<typeof getLoadContext> {
-    // This will merge the result of `getLoadContext` into the `AppLoadContext`
-  }
+declare module "react-router" {
+  interface AppLoadContext extends ReturnType<typeof getLoadContext> {}
 }
 
 export function getLoadContext({ context }: GetLoadContextArgs) {
